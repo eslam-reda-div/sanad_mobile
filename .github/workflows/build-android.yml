@@ -29,7 +29,7 @@ jobs:
       - name: 🔧 Clean and verify dependencies
         run: |
           npm install
-          npx expo install --check
+          npx expo install --fix
 
       - name: ⚙️ Prebuild native Android project
         run: |
