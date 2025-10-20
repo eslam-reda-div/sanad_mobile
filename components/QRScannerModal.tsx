@@ -1,119 +1,97 @@
 import Button from '@/components/ui/Button';
 import TextInput from '@/components/ui/TextInput';
 import { Theme } from '@/constants/Theme';
-import * as mockServer from '@/src/api/mockServer';
-import React, { useEffect, useState } from 'react';
-import { Alert, Modal, Platform, StyleSheet, Text, View } from 'react-native';
-
-// Safely import Camera
-let CameraComponent: any = null;
-let CameraType: any = null;
-let requestCameraPermissions: any = null;
-let isCameraAvailable = false;
-
-try {
-  const { Camera, CameraType: CT } = require('expo-camera');
-  // Check if Camera is actually a valid component (function or class)
-  if (Camera && (typeof Camera === 'function' || typeof Camera === 'object')) {
-    CameraComponent = Camera;
-    CameraType = CT;
-    requestCameraPermissions = Camera.requestCameraPermissionsAsync;
-    isCameraAvailable = typeof Camera === 'function' || (Camera.render && typeof Camera.render === 'function');
-  }
-} catch (e) {
-  console.warn('expo-camera not available:', e);
-}
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import React, { useState } from 'react';
+import { Modal, Platform, StyleSheet, Text, View } from 'react-native';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (data: string) => void;
 };
 
 export default function QRScannerModal({ visible, onClose, onSuccess }: Props) {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [manualValue, setManualValue] = useState('');
 
-  useEffect(() => {
-    if (!isCameraAvailable || !requestCameraPermissions) {
-      setHasPermission(false);
-      return;
-    }
-
-    (async () => {
-      try {
-        // Request camera permissions
-        const { status } = await requestCameraPermissions();
-        setHasPermission(status === 'granted');
-      } catch (error) {
-        console.error('Permission request failed:', error);
-        setHasPermission(false);
-      }
-    })();
-  }, []);
-
-  const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
+    
     setScanned(true);
-    // Validate UUID regex (simple check):
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(data)) {
-      Alert.alert('Invalid QR', 'QR code does not contain a valid UUID.');
+    onSuccess?.(data);
+    
+    // Reset and close after a short delay
+    setTimeout(() => {
       setScanned(false);
-      return;
-    }
-    try {
-      const device = await mockServer.assignDevice(data);
-      Alert.alert('Device assigned', `Device ${device.uuid} assigned successfully.`);
-      onSuccess?.();
       onClose();
-    } catch (err: any) {
-      Alert.alert('Assignment failed', err.message);
-      setScanned(false);
-    }
+    }, 500);
   };
 
-  const handleManualAssign = async () => {
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(manualValue)) {
-      Alert.alert('Invalid UUID', 'Please enter a valid device UUID.');
-      return;
-    }
-    try {
-      const device = await mockServer.assignDevice(manualValue);
-      Alert.alert('Device assigned', `Device ${device.uuid} assigned successfully.`);
-      setManualValue('');
-      onSuccess?.();
-      onClose();
-    } catch (err: any) {
-      Alert.alert('Assignment failed', err.message);
-    }
+  const handleManualAssign = () => {
+    if (!manualValue.trim()) return;
+    
+    onSuccess?.(manualValue.trim());
+    setManualValue('');
+    onClose();
   };
 
-  // If camera is not available, show manual input option.
-  if (!isCameraAvailable || !CameraComponent) {
+  // Camera permissions are still loading
+  if (!permission) {
     return (
       <Modal visible={visible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.title}>QR Scanner Unavailable</Text>
+            <Text style={styles.title}>Loading...</Text>
+            <Text style={styles.message}>Initializing camera...</Text>
+            <Button title="Close" onPress={onClose} variant="outline" fullWidth />
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  // Camera permissions not granted yet
+  if (!permission.granted) {
+    return (
+      <Modal visible={visible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.title}>Camera Permission Required</Text>
             <Text style={styles.message}>
-              Camera scanning requires a native rebuild. Please run: npx expo prebuild && npx expo run:android
+              We need your permission to access the camera to scan QR codes.
               {'\n\n'}
-              Or you can manually enter the device UUID below.
+              You can also manually enter the device UUID below.
             </Text>
+            
+            <Button
+              title="Grant Camera Permission"
+              onPress={requestPermission}
+              variant="primary"
+              fullWidth
+            />
+            
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            
             <TextInput
-              label="Device UUID"
+              label="Device UUID (Manual Entry)"
               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
               value={manualValue}
               onChangeText={setManualValue}
             />
             <Button
-              title="Assign Device"
+              title="Assign Device Manually"
               onPress={handleManualAssign}
-              variant="primary"
+              variant="secondary"
               fullWidth
+              disabled={!manualValue.trim()}
             />
+            
             <Button title="Close" onPress={onClose} variant="outline" fullWidth />
           </View>
         </View>
@@ -121,84 +99,61 @@ export default function QRScannerModal({ visible, onClose, onSuccess }: Props) {
     );
   }
 
-  if (hasPermission === null) {
-    return (
-      <Modal visible={visible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.title}>Requesting Permission...</Text>
-            <Text style={styles.message}>Please grant camera access to scan QR codes.</Text>
-          </View>
-        </View>
-      </Modal>
-    );
-  }
-
-  if (hasPermission === false) {
-    return (
-      <Modal visible={visible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.title}>Camera Access Required</Text>
-            <Text style={styles.message}>
-              Please grant camera permission in your device settings to scan QR codes, or enter the UUID manually below.
-            </Text>
-            <TextInput
-              label="Device UUID (Manual)"
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              value={manualValue}
-              onChangeText={setManualValue}
-            />
-            <Button
-              title="Assign Device"
-              onPress={handleManualAssign}
-              variant="primary"
-              fullWidth
-            />
-            <Button title="Close" onPress={onClose} variant="outline" fullWidth />
-          </View>
-        </View>
-      </Modal>
-    );
-  }
-
+  // Camera permission granted - show scanner
   return (
     <Modal visible={visible} animationType="slide">
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Scan Device QR Code</Text>
-          <Text style={styles.subtitle}>Align the QR code within the frame</Text>
+          <Text style={styles.subtitle}>
+            {scanned ? 'QR Code Detected!' : 'Align the QR code within the frame'}
+          </Text>
         </View>
 
         <View style={styles.scannerContainer}>
-          {isCameraAvailable && CameraComponent ? (
-            <CameraComponent
-              style={StyleSheet.absoluteFillObject}
-              facing={CameraType?.back || 'back'}
-              onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-              barcodeScannerSettings={{
-                barcodeTypes: ['qr'],
-              }}
-            />
-          ) : (
-            <View style={styles.placeholderContainer}>
-              <Text style={styles.placeholderText}>Camera not available</Text>
-            </View>
-          )}
+          <CameraView
+            style={StyleSheet.absoluteFillObject}
+            facing="back"
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: ['qr'],
+            }}
+          />
 
           <View style={styles.overlay}>
-            <View style={styles.scanFrame} />
+            <View style={[styles.scanFrame, scanned && styles.scanFrameSuccess]} />
+            {scanned && (
+              <View style={styles.successIndicator}>
+                <Text style={styles.successText}>✓ Scanned Successfully</Text>
+              </View>
+            )}
           </View>
         </View>
 
         <View style={styles.footer}>
-          {scanned && (
+          {scanned ? (
             <Button 
               title="Tap to Scan Again" 
               onPress={() => setScanned(false)} 
               variant="secondary"
               fullWidth
             />
+          ) : (
+            <View style={styles.manualEntrySection}>
+              <Text style={styles.manualEntryLabel}>Can't scan? Enter manually:</Text>
+              <TextInput
+                placeholder="Device UUID"
+                value={manualValue}
+                onChangeText={setManualValue}
+              />
+              <Button
+                title="Assign Device Manually"
+                onPress={handleManualAssign}
+                variant="secondary"
+                fullWidth
+                disabled={!manualValue.trim()}
+              />
+            </View>
           )}
           <Button title="Close" onPress={onClose} variant="outline" fullWidth />
         </View>
@@ -217,6 +172,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 24,
     backgroundColor: Theme.colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   title: { 
     fontSize: 24, 
@@ -227,59 +187,103 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: Theme.colors.text.secondary,
+    lineHeight: 20,
   },
   scannerContainer: {
     flex: 1,
     position: 'relative',
+    backgroundColor: '#000',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   scanFrame: {
     width: 250,
     height: 250,
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: Theme.colors.primary,
     borderRadius: 16,
     backgroundColor: 'transparent',
+  },
+  scanFrameSuccess: {
+    borderColor: '#10B981',
+  },
+  successIndicator: {
+    marginTop: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+  },
+  successText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   footer: {
     padding: 24,
     gap: 12,
     backgroundColor: Theme.colors.surface,
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  manualEntrySection: {
+    gap: 8,
+  },
+  manualEntryLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.colors.text.secondary,
+    marginBottom: 4,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
   },
   modalContent: {
     backgroundColor: Theme.colors.surface,
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 24,
     width: '100%',
     maxWidth: 400,
     gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   message: {
     fontSize: 14,
     color: Theme.colors.text.secondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 22,
   },
-  placeholderContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  divider: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#000',
+    marginVertical: 8,
   },
-  placeholderText: {
-    color: '#fff',
-    fontSize: 16,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Theme.colors.text.tertiary,
+    opacity: 0.3,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 12,
+    fontWeight: '600',
+    color: Theme.colors.text.tertiary,
   },
 });

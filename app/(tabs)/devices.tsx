@@ -1,45 +1,97 @@
+import LoadingSpinner from '@/components/LoadingSpinner';
 import QRScannerModal from '@/components/QRScannerModal';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { Theme } from '@/constants/Theme';
-import * as mockServer from '@/src/api/mockServer';
+import { devicesApi } from '@/src/api/services';
+import type { Device } from '@/src/api/types';
+import { useAuthStore } from '@/src/store/authStore';
 import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-type Device = { uuid: string; version: string; image: string | null };
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Alert, FlatList, Image, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DevicesScreen() {
+  const { token } = useAuthStore();
   const [devices, setDevices] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [qrVisible, setQrVisible] = useState(false);
 
-  useEffect(() => {
-    fetchDevices();
-  }, []);
-
   const fetchDevices = async () => {
-    const list = await mockServer.getDevices();
-    setDevices(list);
+    // Don't fetch if no token is available
+    if (!token) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    try {
+      const response = await devicesApi.getData();
+      if (response.success && response.data) {
+        setDevices(response.data.devices);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch devices:', error);
+      Alert.alert('Error', 'Failed to load devices');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const handleDelete = async (uuid: string) => {
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        setLoading(true);
+        fetchDevices();
+      }
+    }, [token])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchDevices();
+  };
+
+  const handleDelete = async (deviceId: number) => {
     Alert.alert('Confirm Delete', 'Remove this device from your account?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await mockServer.deleteDevice(uuid);
-          fetchDevices();
+          try {
+            await devicesApi.deleteDevice(deviceId);
+            Alert.alert('Success', 'Device removed successfully');
+            fetchDevices();
+          } catch (error: any) {
+            const msg = error.response?.data?.message || 'Failed to delete device';
+            Alert.alert('Error', msg);
+          }
         },
       },
     ]);
   };
 
-  const handleScanSuccess = () => {
-    fetchDevices();
+  const handleQRScanned = async (data: string) => {
+    try {
+      const response = await devicesApi.addDevice({ uuid: data });
+      if (response.success) {
+        Alert.alert('Success', 'Device added successfully');
+        setQrVisible(false);
+        fetchDevices();
+      }
+    } catch (error: any) {
+      const msg = error.response?.data?.message || 'Failed to add device';
+      Alert.alert('Error', msg);
+    }
   };
+
+  if (loading) {
+    return <LoadingSpinner fullScreen text="Loading devices..." />;
+  }
 
   return (
     <View style={styles.container}>
@@ -57,29 +109,40 @@ export default function DevicesScreen() {
 
       <FlatList
         data={devices}
-        keyExtractor={(item) => item.uuid}
+        keyExtractor={(item) => item.id.toString()}
         numColumns={2}
         contentContainerStyle={styles.gridContent}
         columnWrapperStyle={styles.columnWrapper}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         renderItem={({ item }) => (
           <Card variant="elevated" style={styles.deviceCard}>
-            <LinearGradient
-              colors={['#6366F1', '#8B5CF6']}
-              style={styles.deviceIconContainer}
-            >
-              <FontAwesome name="mobile" size={40} color="#fff" />
-            </LinearGradient>
+            {item.image_full_url ? (
+              <Image 
+                source={{ uri: item.image_full_url }} 
+                style={styles.deviceImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <LinearGradient
+                colors={['#6366F1', '#8B5CF6']}
+                style={styles.deviceIconContainer}
+              >
+                <FontAwesome name="mobile" size={40} color="#fff" />
+              </LinearGradient>
+            )}
             <View style={styles.deviceInfo}>
               <Text style={styles.deviceLabel}>Device ID</Text>
               <Text style={styles.deviceId}>{item.uuid.slice(0, 8)}...</Text>
               <View style={styles.versionRow}>
                 <FontAwesome name="info-circle" size={12} color={Theme.colors.text.secondary} />
-                <Text style={styles.versionText}>v{item.version}</Text>
+                <Text style={styles.versionText}>{item.version}</Text>
               </View>
             </View>
             <TouchableOpacity
               style={styles.deleteButton}
-              onPress={() => handleDelete(item.uuid)}
+              onPress={() => handleDelete(item.id)}
             >
               <FontAwesome name="trash" size={16} color={Theme.colors.danger} />
             </TouchableOpacity>
@@ -104,7 +167,7 @@ export default function DevicesScreen() {
       <QRScannerModal
         visible={qrVisible}
         onClose={() => setQrVisible(false)}
-        onSuccess={handleScanSuccess}
+        onSuccess={handleQRScanned}
       />
     </View>
   );
@@ -120,6 +183,12 @@ const styles = StyleSheet.create({
   gridContent: { padding: 24, paddingBottom: 64 },
   columnWrapper: { gap: 16 },
   deviceCard: { flex: 1, minWidth: '45%', alignItems: 'center', paddingVertical: 20, marginBottom: 16 },
+  deviceImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 12,
+  },
   deviceIconContainer: { width: 80, height: 80, borderRadius: 9999, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   deviceInfo: { alignItems: 'center', marginBottom: 12 },
   deviceLabel: { fontSize: 12, color: Theme.colors.text.secondary, marginBottom: 4 },

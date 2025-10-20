@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "sanad_mobile",
-    "slug": "sanad_mobile",
+    "name": "Sanad",
+    "slug": "Sanad",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -33,7 +33,7 @@
         "CAMERA",
         "android.permission.CAMERA"
       ],
-      "package": "com.anonymous.sanad_mobile"
+      "package": "com.anonymous.sanad"
     },
     "web": {
       "bundler": "metro",
@@ -47,7 +47,8 @@
         {
           "cameraPermission": "SANAD needs access to your camera to scan device QR codes."
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

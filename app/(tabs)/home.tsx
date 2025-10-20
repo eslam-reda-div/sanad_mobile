@@ -1,51 +1,96 @@
-﻿import QRScannerModal from '@/components/QRScannerModal';
+﻿import LoadingSpinner from '@/components/LoadingSpinner';
+import QRScannerModal from '@/components/QRScannerModal';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { Theme } from '@/constants/Theme';
-import * as mockServer from '@/src/api/mockServer';
+import { homeApi } from '@/src/api/services';
+import type { HomeData } from '@/src/api/types';
 import { useAuthStore } from '@/src/store/authStore';
 import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
-  const { user } = useAuthStore();
-  const [helpersCount, setHelpersCount] = useState(0);
-  const [devicesCount, setDevicesCount] = useState(0);
-  const [callsCount, setCallsCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const { user, token } = useAuthStore();
+  const router = useRouter();
+  const [homeData, setHomeData] = useState<HomeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [triggerLoading, setTriggerLoading] = useState(false);
   const [qrVisible, setQrVisible] = useState(false);
 
-  useEffect(() => {
-    fetchCounts();
-  }, []);
+  const fetchHomeData = async () => {
+    // Don't fetch if no token is available
+    if (!token) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
 
-  const fetchCounts = async () => {
-    const helpers = await mockServer.getHelpers();
-    const devices = await mockServer.getDevices();
-    const calls = await mockServer.getCalls();
-    setHelpersCount(helpers.length);
-    setDevicesCount(devices.length);
-    setCallsCount(calls.length);
+    try {
+      const response = await homeApi.getData();
+      if (response.success && response.data) {
+        setHomeData(response.data);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch home data:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to load home data';
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        setLoading(true);
+        fetchHomeData();
+      }
+    }, [token])
+  );
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchHomeData();
   };
 
   const handleTriggerCall = async () => {
-    setLoading(true);
+    if (!homeData?.customer?.id) {
+      Alert.alert('Error', 'Customer information not available');
+      return;
+    }
+
+    setTriggerLoading(true);
     try {
-      const call = await mockServer.triggerCall();
-      Alert.alert(
-        'Emergency Call Triggered',
-        `Call ID: ${call.twilio_call_sid}\nStatus: ${call.status}`,
-        [{ text: 'OK' }]
-      );
-      fetchCounts();
+      const response = await homeApi.triggerCall(homeData.customer.id);
+      if (response.success && response.data) {
+        Alert.alert(
+          'Emergency Call Triggered',
+          response.data.response.message,
+          [{ text: 'OK', onPress: () => fetchHomeData() }]
+        );
+      }
     } catch (err: any) {
-      Alert.alert('Call Failed', err.message);
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to trigger call';
+      Alert.alert('Call Failed', errorMsg);
     } finally {
-      setLoading(false);
+      setTriggerLoading(false);
     }
   };
+
+  if (loading) {
+    return <LoadingSpinner fullScreen text="Loading home data..." />;
+  }
+
+  const customer = homeData?.customer;
+  const helpersCount = homeData?.helpers_count || 0;
+  const devicesCount = homeData?.devices_count || 0;
+  const callsCount = homeData?.customer_calls_count || 0;
+  const helperCallsCount = homeData?.helper_calls_count || 0;
 
   return (
     <View style={styles.container}>
@@ -53,15 +98,25 @@ export default function HomeScreen() {
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{user?.name || 'User'}</Text>
+            <Text style={styles.userName}>{customer?.name || user?.name || 'User'}</Text>
           </View>
-          <View style={styles.avatarContainer}>
-            <FontAwesome name="user-circle" size={48} color="#fff" />
-          </View>
+          <TouchableOpacity style={styles.avatarContainer} onPress={() => router.push('/profile')}>
+            {customer?.avatar_full_url ? (
+              <Image source={{ uri: customer.avatar_full_url }} style={styles.avatarImage} />
+            ) : (
+              <FontAwesome name="user-circle" size={48} color="#fff" />
+            )}
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <Text style={styles.sectionTitle}>Quick Stats</Text>
         <View style={styles.statsGrid}>
           <Card variant="elevated" style={styles.statCard}>
@@ -86,11 +141,11 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>Total Calls</Text>
           </Card>
           <Card variant="elevated" style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#FEE2E2' }]}>
-              <FontAwesome name="heartbeat" size={24} color={Theme.colors.danger} />
+            <View style={[styles.statIcon, { backgroundColor: '#DBEAFE' }]}>
+              <FontAwesome name="phone-square" size={24} color={Theme.colors.info} />
             </View>
-            <Text style={styles.statValue}>Active</Text>
-            <Text style={styles.statLabel}>Status</Text>
+            <Text style={styles.statValue}>{helperCallsCount}</Text>
+            <Text style={styles.statLabel}>Helper Calls</Text>
           </Card>
         </View>
 
@@ -105,7 +160,7 @@ export default function HomeScreen() {
               <Text style={styles.emergencySubtitle}>Trigger an emergency call to all your helpers</Text>
             </View>
           </View>
-          {loading ? (
+          {triggerLoading ? (
             <ActivityIndicator size="large" color={Theme.colors.primary} style={{ marginTop: 16 }} />
           ) : (
             <Button
@@ -120,29 +175,24 @@ export default function HomeScreen() {
         </Card>
 
         <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <TouchableOpacity style={styles.actionCardFull} onPress={() => setQrVisible(true)}>
+          <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.actionGradientFull}>
+            <FontAwesome name="qrcode" size={36} color="#fff" />
+            <Text style={styles.actionTextFull}>Scan Device QR Code</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        
         <View style={styles.actionsGrid}>
-          <TouchableOpacity style={styles.actionCard} onPress={() => setQrVisible(true)}>
-            <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.actionGradient}>
-              <FontAwesome name="qrcode" size={32} color="#fff" />
-              <Text style={styles.actionText}>Scan Device QR</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/helpers')}>
             <LinearGradient colors={['#10B981', '#059669']} style={styles.actionGradient}>
               <FontAwesome name="user-plus" size={32} color="#fff" />
               <Text style={styles.actionText}>Add Helper</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCard}>
+          <TouchableOpacity style={styles.actionCard} onPress={() => router.push('/(tabs)/calls')}>
             <LinearGradient colors={['#F59E0B', '#EF4444']} style={styles.actionGradient}>
               <FontAwesome name="history" size={32} color="#fff" />
               <Text style={styles.actionText}>Call History</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCard}>
-            <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.actionGradient}>
-              <FontAwesome name="cog" size={32} color="#fff" />
-              <Text style={styles.actionText}>Settings</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -167,7 +217,20 @@ const styles = StyleSheet.create({
   headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   greeting: { fontSize: 16, color: 'rgba(255,255,255,0.9)', marginBottom: 4 },
   userName: { fontSize: 28, fontWeight: '800', color: '#fff' },
-  avatarContainer: { width: 56, height: 56, borderRadius: 9999, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  avatarContainer: { 
+    width: 56, 
+    height: 56, 
+    borderRadius: 28, 
+    backgroundColor: 'rgba(255,255,255,0.2)', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
   scrollView: { flex: 1 },
   content: { padding: 24, paddingBottom: 64 },
   sectionTitle: { fontSize: 24, fontWeight: '600', color: '#111827', marginTop: 16, marginBottom: 16 },
@@ -183,6 +246,30 @@ const styles = StyleSheet.create({
   emergencyTitle: { fontSize: 20, fontWeight: '600', color: '#111827', marginBottom: 4 },
   emergencySubtitle: { fontSize: 14, color: '#6B7280' },
   emergencyButton: { marginTop: 8 },
+  actionCardFull: Platform.select({
+    web: {
+      width: '100%',
+      height: 100,
+      borderRadius: 16,
+      overflow: 'hidden',
+      marginBottom: 16,
+      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+    } as any,
+    default: {
+      width: '100%',
+      height: 100,
+      borderRadius: 16,
+      overflow: 'hidden',
+      marginBottom: 16,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+  }),
+  actionGradientFull: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 16 },
+  actionTextFull: { fontSize: 18, color: '#fff', fontWeight: '700' },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 24 },
   actionCard: Platform.select({
     web: {

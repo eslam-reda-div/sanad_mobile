@@ -1,16 +1,16 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
 import { setAuthToken } from '../api/client';
-
-type User = { id: string; name: string; email: string; phone?: string; age?: number; disability?: string; location?: string; };
+import type { Customer } from '../api/types';
 
 interface AuthState {
-  user: User | null;
+  user: Customer | null;
   token: string | null;
   loading: boolean;
-  login: (token: string, user: User) => Promise<void>;
+  login: (token: string, user: Customer) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  updateUser: (user: Customer) => Promise<void>;
 }
 
 const TOKEN_KEY = 'auth_token';
@@ -49,5 +49,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     } catch {
       set({ loading: false });
     }
+  },
+
+  updateUser: async (user) => {
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+    set({ user });
   },
 }));

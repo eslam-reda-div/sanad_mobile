@@ -28,12 +28,16 @@ export default function TabLayout() {
         tabBarActiveTintColor: Theme.colors.primary,
         tabBarInactiveTintColor: Theme.colors.text.tertiary,
         tabBarStyle: {
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
           backgroundColor: Theme.colors.surface,
           borderTopColor: 'transparent',
           borderTopWidth: 0,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 0,
-          paddingTop: 6,
-          height: Platform.OS === 'ios' ? 80 : 80,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+          paddingTop: 8,
+          height: Platform.OS === 'ios' ? 85 : 65,
           ...Platform.select({
             web: {
               boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.08)',
@@ -50,12 +54,12 @@ export default function TabLayout() {
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '600',
-          marginTop: 2,
-          marginBottom: 0,
+          marginTop: 4,
+          marginBottom: Platform.OS === 'ios' ? 0 : 2,
           letterSpacing: 0.2,
         },
         tabBarItemStyle: {
-          paddingVertical: 0,
+          paddingVertical: 4,
           justifyContent: 'center',
           alignItems: 'center',
         },

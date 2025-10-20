@@ -2,7 +2,7 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import TextInput from '@/components/ui/TextInput';
 import { Theme } from '@/constants/Theme';
-import * as mockServer from '@/src/api/mockServer';
+import { authApi } from '@/src/api/services';
 import { useAuthStore } from '@/src/store/authStore';
 import { FontAwesome } from '@expo/vector-icons';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -10,12 +10,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as yup from 'yup';
 
 const schema = yup.object().shape({
-  email: yup.string().email('Invalid email').required('Email required'),
-  password: yup.string().min(8, 'At least 8 characters').required('Password required'),
+  identifier: yup.string().required('Email or phone number required'),
+  password: yup.string().min(6, 'At least 6 characters').required('Password required'),
 });
 
 export default function LoginScreen() {
@@ -25,7 +25,7 @@ export default function LoginScreen() {
   const { control, handleSubmit, formState: { errors } } = useForm({ 
     resolver: yupResolver(schema),
     defaultValues: {
-      email: '',
+      identifier: '',
       password: '',
     },
   });
@@ -33,15 +33,20 @@ export default function LoginScreen() {
   const onSubmit = async (data: any) => {
     setLoading(true);
     try {
-      const res = await mockServer.authLogin(data.email, data.password);
-      if (res.user) {
-        await login(res.token, res.user);
+      const response = await authApi.login({
+        identifier: data.identifier,
+        password: data.password,
+      });
+      
+      if (response.success && response.data) {
+        await login(response.data.token, response.data.customer);
         router.replace('/(tabs)/home');
       } else {
-        Alert.alert('Login failed', 'No user data returned');
+        Alert.alert('Login Failed', response.message || 'Unable to login');
       }
     } catch (err: any) {
-      Alert.alert('Login failed', err.message || 'Unknown error');
+      const errorMessage = err.response?.data?.message || err.message || 'Unable to connect to server';
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -69,17 +74,16 @@ export default function LoginScreen() {
 
           <Controller
             control={control}
-            name="email"
+            name="identifier"
             render={({ field }) => (
               <TextInput
-                label="Email Address"
-                placeholder="Enter your email"
+                label="Email or Phone Number"
+                placeholder="Enter your email or phone"
                 value={field.value}
                 onChangeText={field.onChange}
-                keyboardType="email-address"
                 autoCapitalize="none"
-                error={errors.email?.message}
-                leftIcon={<FontAwesome name="envelope" size={20} color={Theme.colors.text.tertiary} />}
+                error={errors.identifier?.message}
+                leftIcon={<FontAwesome name="user" size={20} color={Theme.colors.text.tertiary} />}
               />
             )}
           />
@@ -100,9 +104,6 @@ export default function LoginScreen() {
             )}
           />
 
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
 
           <Button
             title={loading ? "Signing in..." : "Sign In"}

@@ -16,7 +16,54 @@ let devices = [
   { uuid: '11111111-1111-4111-8111-111111111111', image: null, version: '1.0.0', customer_id: 'u1' },
 ];
 
-let calls: any[] = [];
+let calls: any[] = [
+  {
+    uuid: 'c1234567-1234-4123-8123-123456789abc',
+    customer_id: 'u1',
+    device_id: '11111111-1111-4111-8111-111111111111',
+    twilio_call_sid: 'CA1234567890abcdef1234567890abcdef',
+    status: 'completed',
+    initiated_at: new Date(Date.now() - 3600000).toISOString(),
+    ringing_at: new Date(Date.now() - 3598000).toISOString(),
+    answered_at: new Date(Date.now() - 3595000).toISOString(),
+    completed_at: new Date(Date.now() - 3400000).toISOString(),
+    duration_seconds: 195,
+    help_requested: false,
+    outcome: 'successful',
+    trigger_metadata: { trigger_type: 'button_press', location: 'living_room' },
+    call_metadata: { helper_name: 'Ali', helper_phone: '0100000001' },
+    retry_count: 0,
+  },
+  {
+    uuid: 'c2345678-2345-4234-8234-234567890bcd',
+    customer_id: 'u1',
+    device_id: '11111111-1111-4111-8111-111111111111',
+    twilio_call_sid: 'CA2345678901bcdef2345678901bcdef0',
+    status: 'failed',
+    initiated_at: new Date(Date.now() - 7200000).toISOString(),
+    ringing_at: new Date(Date.now() - 7198000).toISOString(),
+    duration_seconds: 0,
+    help_requested: true,
+    outcome: 'no_answer',
+    trigger_metadata: { trigger_type: 'emergency', location: 'bedroom' },
+    error_message: 'No helper answered the call',
+    retry_count: 2,
+  },
+  {
+    uuid: 'c3456789-3456-4345-8345-3456789abcde',
+    customer_id: 'u1',
+    device_id: '11111111-1111-4111-8111-111111111111',
+    twilio_call_sid: 'CA3456789012cdef3456789012cdef01',
+    status: 'in-progress',
+    initiated_at: new Date(Date.now() - 300000).toISOString(),
+    ringing_at: new Date(Date.now() - 298000).toISOString(),
+    answered_at: new Date(Date.now() - 295000).toISOString(),
+    help_requested: true,
+    trigger_metadata: { trigger_type: 'button_press', location: 'kitchen' },
+    call_metadata: { helper_name: 'Mona', helper_phone: '0100000002' },
+    retry_count: 0,
+  },
+];
 
 export async function authLogin(email: string, password: string) {
   // accept any credentials for mock
@@ -105,7 +152,62 @@ export async function triggerCall() {
 }
 
 export async function getHelpersCalls() {
-  return [];
+  return [
+    {
+      uuid: 'hc1234567-1234-4123-8123-123456789def',
+      helper_id: 'h1',
+      customer_id: 'u1',
+      customer_call_id: 'c1234567-1234-4123-8123-123456789abc',
+      twilio_call_sid: 'CA4567890123def4567890123def012',
+      reason: 'Emergency assistance needed',
+      priority: 1,
+      status: 'answered',
+      initiated_at: new Date(Date.now() - 1800000).toISOString(),
+      ringing_at: new Date(Date.now() - 1798000).toISOString(),
+      answered_at: new Date(Date.now() - 1795000).toISOString(),
+      completed_at: new Date(Date.now() - 1600000).toISOString(),
+      duration_seconds: 195,
+      accepted: true,
+      response: 'on_my_way',
+      call_metadata: { location: 'living_room', urgency: 'high' },
+      retry_count: 0,
+    },
+    {
+      uuid: 'hc2345678-2345-4234-8234-234567890efg',
+      helper_id: 'h2',
+      customer_id: 'u1',
+      customer_call_id: 'c2345678-2345-4234-8234-234567890bcd',
+      twilio_call_sid: 'CA5678901234efg5678901234efg123',
+      reason: 'Routine check-in',
+      priority: 2,
+      status: 'no-answer',
+      initiated_at: new Date(Date.now() - 5400000).toISOString(),
+      ringing_at: new Date(Date.now() - 5398000).toISOString(),
+      duration_seconds: 30,
+      accepted: false,
+      call_metadata: { location: 'bedroom' },
+      error_message: 'Helper did not answer',
+      retry_count: 1,
+    },
+    {
+      uuid: 'hc3456789-3456-4345-8345-3456789fghi',
+      helper_id: 'h1',
+      customer_id: 'u1',
+      customer_call_id: 'c3456789-3456-4345-8345-3456789abcde',
+      twilio_call_sid: 'CA6789012345fgh6789012345fgh234',
+      reason: 'Button pressed for help',
+      priority: 1,
+      status: 'busy',
+      initiated_at: new Date(Date.now() - 900000).toISOString(),
+      ringing_at: new Date(Date.now() - 898000).toISOString(),
+      duration_seconds: 0,
+      accepted: false,
+      response: 'busy',
+      call_metadata: { location: 'kitchen', trigger_type: 'button_press' },
+      error_message: 'Helper was busy',
+      retry_count: 0,
+    },
+  ];
 }
 
 export async function updateProfile(data: { name: string; phone: string; age?: number; disability?: string; location?: string; }) {

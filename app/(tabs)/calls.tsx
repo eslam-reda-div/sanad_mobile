@@ -1,32 +1,81 @@
+import LoadingSpinner from '@/components/LoadingSpinner';
+import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { Theme } from '@/constants/Theme';
-import * as mockServer from '@/src/api/mockServer';
+import { customerCallsApi } from '@/src/api/services';
+import type { CustomerCall } from '@/src/api/types';
+import { useAuthStore } from '@/src/store/authStore';
 import { FontAwesome } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-type Call = { uuid: string; device_id: string; status: string; initiated_at: string; twilio_call_sid: string };
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function CallsScreen() {
-  const [calls, setCalls] = useState<Call[]>([]);
+  const { token } = useAuthStore();
+  const [calls, setCalls] = useState<CustomerCall[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchCalls();
-  }, []);
-
+  // Fetch calls data
   const fetchCalls = async () => {
-    const list = await mockServer.getCalls();
-    setCalls(list);
+    // Don't fetch if no token is available
+    if (!token) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    try {
+      const response = await customerCallsApi.getData();
+      if (response.success && response.data) {
+        setCalls(response.data.customer_calls || []);
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch calls:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to load calls');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
-  const onRefresh = async () => {
+  // Refresh calls data on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      if (token) {
+        setLoading(true);
+        fetchCalls();
+      }
+    }, [token])
+  );
+
+  const onRefresh = () => {
     setRefreshing(true);
-    await fetchCalls();
-    setRefreshing(false);
+    fetchCalls();
+  };
+
+  const handleDelete = async (id: number) => {
+    Alert.alert('Confirm Delete', 'Are you sure you want to delete this call record?', [
+      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Delete', 
+        style: 'destructive', 
+        onPress: async () => {
+          try {
+            const response = await customerCallsApi.deleteCall(id);
+            if (response.success) {
+              Alert.alert('Success', 'Call deleted successfully');
+              fetchCalls();
+            }
+          } catch (error: any) {
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to delete call';
+            Alert.alert('Error', errorMessage);
+          }
+        }
+      },
+    ]);
   };
 
   const getStatusColor = (status: string) => {
@@ -47,7 +96,8 @@ export default function CallsScreen() {
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -62,9 +112,21 @@ export default function CallsScreen() {
     return date.toLocaleDateString();
   };
 
-  const formatTime = (dateString: string) => {
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const formatDuration = (duration: number | null) => {
+    if (!duration) return 'N/A';
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    return `${minutes}m ${seconds}s`;
+  };
+
+  if (loading) {
+    return <LoadingSpinner fullScreen text="Loading calls..." />;
+  }
 
   return (
     <View style={styles.container}>
@@ -82,48 +144,58 @@ export default function CallsScreen() {
 
       <FlatList
         data={calls}
-        keyExtractor={(item) => item.uuid}
+        keyExtractor={(item) => String(item.id)}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
-          <TouchableOpacity onPress={() => router.push(`/call-detail?uuid=${item.uuid}`)}>
-            <Card variant="elevated" style={styles.callCard}>
-              <View style={styles.timelineContainer}>
-                <View style={styles.timelineDot} />
-                <View style={styles.timelineLine} />
+          <Card variant="elevated" style={styles.callCard}>
+            <View style={styles.timelineContainer}>
+              <View style={styles.timelineDot} />
+              <View style={styles.timelineLine} />
+            </View>
+            <View style={styles.callContent}>
+              <View style={styles.callHeader}>
+                <View style={styles.callTitleRow}>
+                  <FontAwesome name="phone" size={20} color={Theme.colors.primary} />
+                  <Text style={styles.callTitle}>Emergency Call</Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                  <FontAwesome name={getStatusIcon(item.status)} size={12} color="#fff" />
+                  <Text style={styles.statusText}>{item.status || 'N/A'}</Text>
+                </View>
               </View>
-              <View style={styles.callContent}>
-                <View style={styles.callHeader}>
-                  <View style={styles.callTitleRow}>
-                    <FontAwesome name="phone" size={20} color={Theme.colors.primary} />
-                    <Text style={styles.callTitle}>Emergency Call</Text>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                    <FontAwesome name={getStatusIcon(item.status)} size={12} color="#fff" />
-                    <Text style={styles.statusText}>{item.status}</Text>
-                  </View>
+              <View style={styles.callDetails}>
+                <View style={styles.detailRow}>
+                  <FontAwesome name="clock-o" size={14} color={Theme.colors.text.secondary} />
+                  <Text style={styles.detailText}>{formatDate(item.initiated_at || null)} at {formatTime(item.initiated_at || null)}</Text>
                 </View>
-                <View style={styles.callDetails}>
-                  <View style={styles.detailRow}>
-                    <FontAwesome name="clock-o" size={14} color={Theme.colors.text.secondary} />
-                    <Text style={styles.detailText}>{formatDate(item.initiated_at)} at {formatTime(item.initiated_at)}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <FontAwesome name="mobile" size={16} color={Theme.colors.text.secondary} />
-                    <Text style={styles.detailText}>Device: {item.device_id?.slice(0, 8) || 'N/A'}</Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <FontAwesome name="hashtag" size={14} color={Theme.colors.text.secondary} />
-                    <Text style={styles.detailText}>ID: {item.uuid.slice(0, 13)}...</Text>
-                  </View>
+                <View style={styles.detailRow}>
+                  <FontAwesome name="hourglass-half" size={14} color={Theme.colors.text.secondary} />
+                  <Text style={styles.detailText}>Duration: {formatDuration(item.duration_seconds || null)}</Text>
                 </View>
-                <TouchableOpacity style={styles.viewButton}>
+                <View style={styles.detailRow}>
+                  <FontAwesome name="mobile" size={16} color={Theme.colors.text.secondary} />
+                  <Text style={styles.detailText}>Device ID: {item.device_id || 'N/A'}</Text>
+                </View>
+              </View>
+              <View style={styles.cardActions}>
+                <TouchableOpacity 
+                  style={styles.viewButton}
+                  onPress={() => router.push(`/call-detail?id=${item.id}`)}
+                >
                   <Text style={styles.viewButtonText}>View Details</Text>
                   <FontAwesome name="chevron-right" size={14} color={Theme.colors.primary} />
                 </TouchableOpacity>
+                <Button
+                  title="Delete"
+                  onPress={() => handleDelete(item.id)}
+                  variant="danger"
+                  size="small"
+                  icon={<FontAwesome name="trash" size={16} color="#fff" />}
+                />
               </View>
-            </Card>
-          </TouchableOpacity>
+            </View>
+          </Card>
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -158,7 +230,8 @@ const styles = StyleSheet.create({
   callDetails: { gap: 8, marginBottom: 12 },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   detailText: { fontSize: 14, color: Theme.colors.text.secondary },
-  viewButton: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' },
+  cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 4 },
+  viewButton: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   viewButtonText: { fontSize: 14, fontWeight: '600', color: Theme.colors.primary },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64 },
   emptyText: { fontSize: 20, fontWeight: '600', color: Theme.colors.text.primary, marginTop: 16 },

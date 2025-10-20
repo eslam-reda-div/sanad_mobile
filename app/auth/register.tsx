@@ -2,7 +2,7 @@ import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import TextInput from '@/components/ui/TextInput';
 import { Theme } from '@/constants/Theme';
-import * as mockServer from '@/src/api/mockServer';
+import { authApi } from '@/src/api/services';
 import { useAuthStore } from '@/src/store/authStore';
 import { FontAwesome } from '@expo/vector-icons';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -16,11 +16,11 @@ import * as yup from 'yup';
 const schema = yup.object().shape({
   name: yup.string().required('Name required'),
   email: yup.string().email('Invalid email').required('Email required'),
-  phone: yup.string().required('Phone required'),
+  phone_number: yup.string().required('Phone required'),
   age: yup.number().positive('Invalid age').integer('Invalid age'),
   disability: yup.string(),
   location: yup.string(),
-  password: yup.string().min(8, 'At least 8 characters').required('Password required'),
+  password: yup.string().min(6, 'At least 6 characters').required('Password required'),
   confirmPassword: yup.string().oneOf([yup.ref('password')], 'Passwords must match'),
 });
 
@@ -33,7 +33,7 @@ export default function RegisterScreen() {
     defaultValues: {
       name: '',
       email: '',
-      phone: '',
+      phone_number: '',
       age: undefined,
       disability: '',
       location: '',
@@ -45,15 +45,32 @@ export default function RegisterScreen() {
   const onSubmit = async (data: any) => {
     setLoading(true);
     try {
-      const res = await mockServer.authRegister(data);
-      if (res.user) {
-        await login(res.token, res.user);
+      const response = await authApi.register({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        phone_number: data.phone_number,
+        age: data.age,
+        disability: data.disability || undefined,
+        location: data.location || undefined,
+      });
+      
+      if (response.success && response.data) {
+        await login(response.data.token, response.data.customer);
         router.replace('/(tabs)/home');
       } else {
-        Alert.alert('Registration failed', 'No user data returned');
+        Alert.alert('Registration Failed', response.message || 'Unable to register');
       }
     } catch (err: any) {
-      Alert.alert('Registration failed', err.message || 'Unknown error');
+      const errorMessage = err.response?.data?.message || err.message || 'Unable to connect to server';
+      const errors = err.response?.data?.data;
+      
+      if (errors && typeof errors === 'object') {
+        const firstError = Object.values(errors)[0];
+        Alert.alert('Registration Failed', Array.isArray(firstError) ? firstError[0] : errorMessage);
+      } else {
+        Alert.alert('Registration Failed', errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -112,7 +129,7 @@ export default function RegisterScreen() {
 
           <Controller
             control={control}
-            name="phone"
+            name="phone_number"
             render={({ field }) => (
               <TextInput
                 label="Phone Number"
@@ -120,7 +137,7 @@ export default function RegisterScreen() {
                 value={field.value}
                 onChangeText={field.onChange}
                 keyboardType="phone-pad"
-                error={errors.phone?.message}
+                error={errors.phone_number?.message}
                 leftIcon={<FontAwesome name="phone" size={20} color={Theme.colors.text.tertiary} />}
               />
             )}
@@ -147,7 +164,7 @@ export default function RegisterScreen() {
             name="disability"
             render={({ field }) => (
               <TextInput
-                label="Disability (Optional)"
+                label="Disability"
                 placeholder="If applicable"
                 value={field.value}
                 onChangeText={field.onChange}
@@ -161,7 +178,7 @@ export default function RegisterScreen() {
             name="location"
             render={({ field }) => (
               <TextInput
-                label="Location (Optional)"
+                label="Location"
                 placeholder="City, Country"
                 value={field.value}
                 onChangeText={field.onChange}
