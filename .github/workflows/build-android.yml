@@ -15,22 +15,37 @@ jobs:
       - name: 🟩 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
 
       - name: 🧰 Install dependencies
         run: |
-          npm install -g expo-cli eas-cli
+          npm install -g eas-cli
           npm ci
+
+      - name: 🗑️ Remove expo-barcode-scanner (incompatible)
+        run: |
+          npm uninstall expo-barcode-scanner || true
+
+      - name: 🔧 Clean and verify dependencies
+        run: |
+          npm install
+          npx expo install --check
 
       - name: ⚙️ Prebuild native Android project
         run: |
-          npx expo prebuild --platform android
+          npx expo prebuild --platform android --clean
+        env:
+          EXPO_NO_TELEMETRY: 1
+
+      - name: 🔨 Make Gradlew executable
+        run: |
+          cd android
+          chmod +x gradlew
 
       - name: 📦 Build Android APK
         run: |
           cd android
-          ./gradlew assembleRelease
-          cd ..
+          ./gradlew assembleRelease --no-daemon --stacktrace
         env:
           EXPO_NO_DOTENV: 1
 
@@ -39,6 +54,7 @@ jobs:
         run: |
           APK_PATH=$(find android/app/build/outputs/apk/release -name "*.apk" | head -n 1)
           echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT
+          echo "Found APK at: $APK_PATH"
 
       - name: 🏷️ Create GitHub Release
         id: create_release
