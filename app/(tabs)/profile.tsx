@@ -525,7 +525,7 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Theme.colors.background },
-  header: { paddingTop: 60, paddingBottom: 32, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+  header: { paddingTop: 50, paddingBottom: 30, alignItems: 'center', borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
   avatarContainer: { 
     width: 120, 
     height: 120, 
@@ -557,7 +557,7 @@ const styles = StyleSheet.create({
   },
   userName: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 4 },
   userEmail: { fontSize: 16, color: 'rgba(255,255,255,0.8)' },
-  content: { padding: 24, paddingBottom: 64 },
+  content: { padding: 24, paddingBottom: 120 },
   infoCard: { marginBottom: 16 },
   actionsCard: { marginBottom: 16 },
   cardTitle: { fontSize: 20, fontWeight: '700', color: Theme.colors.text.primary, marginBottom: 16 },

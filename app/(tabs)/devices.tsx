@@ -1,7 +1,6 @@
 import LoadingSpinner from '@/components/LoadingSpinner';
 import QRScannerModal from '@/components/QRScannerModal';
 import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
 import { Theme } from '@/constants/Theme';
 import { devicesApi } from '@/src/api/services';
 import type { Device } from '@/src/api/types';
@@ -110,43 +109,61 @@ export default function DevicesScreen() {
       <FlatList
         data={devices}
         keyExtractor={(item) => item.id.toString()}
-        numColumns={2}
-        contentContainerStyle={styles.gridContent}
-        columnWrapperStyle={styles.columnWrapper}
+        contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         renderItem={({ item }) => (
-          <Card variant="elevated" style={styles.deviceCard}>
-            {item.image_full_url ? (
-              <Image 
-                source={{ uri: item.image_full_url }} 
-                style={styles.deviceImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <LinearGradient
-                colors={['#6366F1', '#8B5CF6']}
-                style={styles.deviceIconContainer}
-              >
-                <FontAwesome name="mobile" size={40} color="#fff" />
-              </LinearGradient>
-            )}
-            <View style={styles.deviceInfo}>
-              <Text style={styles.deviceLabel}>Device ID</Text>
-              <Text style={styles.deviceId}>{item.uuid.slice(0, 8)}...</Text>
-              <View style={styles.versionRow}>
-                <FontAwesome name="info-circle" size={12} color={Theme.colors.text.secondary} />
-                <Text style={styles.versionText}>{item.version}</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => handleDelete(item.id)}
+          <View style={styles.deviceCard}>
+            <LinearGradient
+              colors={['#F8FAFC', '#F1F5F9']}
+              style={styles.deviceCardGradient}
             >
-              <FontAwesome name="trash" size={16} color={Theme.colors.danger} />
-            </TouchableOpacity>
-          </Card>
+              <View style={styles.deviceCardContent}>
+                <View style={styles.deviceLeft}>
+                  {item.image_full_url ? (
+                    <Image 
+                      source={{ uri: item.image_full_url }} 
+                      style={styles.deviceImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <LinearGradient
+                      colors={['#6366F1', '#8B5CF6']}
+                      style={styles.deviceIconContainer}
+                    >
+                      <FontAwesome name="mobile" size={36} color="#fff" />
+                    </LinearGradient>
+                  )}
+                  
+                  <View style={styles.deviceInfo}>
+                    <Text style={styles.deviceLabel}>Device UUID</Text>
+                    <Text style={styles.deviceId} numberOfLines={1} ellipsizeMode="middle">
+                      {item.uuid}
+                    </Text>
+                    <View style={styles.deviceMeta}>
+                      <View style={styles.versionBadge}>
+                        <FontAwesome name="info-circle" size={12} color="#6366F1" />
+                        <Text style={styles.versionText}>{item.version}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDelete(item.id)}
+                >
+                  <LinearGradient
+                    colors={['#FEE2E2', '#FECACA']}
+                    style={styles.deleteButtonGradient}
+                  >
+                    <FontAwesome name="trash" size={18} color="#EF4444" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+          </View>
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -180,22 +197,121 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 4 },
   headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)' },
   scanButton: { width: 56, height: 56, borderRadius: 9999, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  gridContent: { padding: 24, paddingBottom: 64 },
-  columnWrapper: { gap: 16 },
-  deviceCard: { flex: 1, minWidth: '45%', alignItems: 'center', paddingVertical: 20, marginBottom: 16 },
-  deviceImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 12,
+  listContent: { padding: 24, paddingBottom: 120 },
+  deviceCard: {
+    width: '100%',
+    marginBottom: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
   },
-  deviceIconContainer: { width: 80, height: 80, borderRadius: 9999, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  deviceInfo: { alignItems: 'center', marginBottom: 12 },
-  deviceLabel: { fontSize: 12, color: Theme.colors.text.secondary, marginBottom: 4 },
-  deviceId: { fontSize: 16, fontWeight: '700', color: Theme.colors.text.primary, marginBottom: 8 },
-  versionRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  versionText: { fontSize: 12, color: Theme.colors.text.secondary },
-  deleteButton: { padding: 8 },
+  deviceCardGradient: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(148, 163, 184, 0.2)',
+  },
+  deviceCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+  },
+  deviceLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  deviceImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+  },
+  deviceIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  deviceInfo: {
+    flex: 1,
+    gap: 6,
+  },
+  deviceLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Theme.colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  deviceId: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Theme.colors.text.primary,
+    fontFamily: 'monospace',
+  },
+  deviceMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
+  versionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  versionText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6366F1',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+  },
+  deleteButton: {
+    marginLeft: 12,
+  },
+  deleteButtonGradient: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64, paddingHorizontal: 24 },
   emptyText: { fontSize: 20, fontWeight: '600', color: Theme.colors.text.primary, marginTop: 16 },
   emptySubtext: { fontSize: 14, color: Theme.colors.text.secondary, marginTop: 8, textAlign: 'center', marginBottom: 24 },

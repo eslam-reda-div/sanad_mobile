@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
   },
   scrollView: { flex: 1 },
-  content: { padding: 24, paddingBottom: 64 },
+  content: { padding: 24, paddingBottom: 120 },
   sectionTitle: { fontSize: 24, fontWeight: '600', color: '#111827', marginTop: 16, marginBottom: 16 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 24 },
   statCard: { flex: 1, minWidth: '45%', alignItems: 'center', paddingVertical: 24 },

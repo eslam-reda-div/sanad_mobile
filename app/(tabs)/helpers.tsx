@@ -401,7 +401,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 4 },
   headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)' },
   addButton: { width: 56, height: 56, borderRadius: 9999, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  listContent: { padding: 24, paddingBottom: 64 },
+  listContent: { padding: 24, paddingBottom: 120 },
   helperCard: { marginBottom: 16 },
   helperHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
   avatarContainer: { marginRight: 16, width: 48, height: 48, borderRadius: 24, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },

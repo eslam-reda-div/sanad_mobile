@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   header: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#fff', marginBottom: 4, textAlign: 'center' },
   headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)', textAlign: 'center' },
-  content: { padding: 24 },
+  content: { padding: 24 , paddingBottom: 50},
   helperCard: { marginBottom: 16 },
   helperHeader: { flexDirection: 'row', alignItems: 'center' },
   helperAvatarContainer: { marginRight: 16, width: 48, height: 48, borderRadius: 24, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
