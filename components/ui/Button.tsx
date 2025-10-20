@@ -111,6 +111,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: Theme.colors.primary,
+    ...Platform.select({
+      web: {
+        boxShadow: 'none',
+      } as any,
+      default: {
+        shadowOpacity: 0,
+        elevation: 0,
+      },
+    }),
   },
   ghostButton: {
     backgroundColor: 'transparent',

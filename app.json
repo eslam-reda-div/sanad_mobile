@@ -40,7 +40,16 @@
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-    "plugins": ["expo-router", "expo-barcode-scanner"],
+    "plugins": [
+      "expo-router",
+      "expo-barcode-scanner",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SANAD needs access to your camera to scan device QR codes."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     }

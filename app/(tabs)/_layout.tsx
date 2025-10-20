@@ -12,12 +12,10 @@ function TabBarIcon(props: {
   return (
     <View style={[styles.iconContainer, props.focused && styles.iconContainerActive]}>
       <FontAwesome 
-        size={props.focused ? 26 : 24} 
+        size={props.focused ? 24 : 22} 
         name={props.name} 
         color={props.color}
-        style={{ marginBottom: -2 }}
       />
-      {props.focused && <View style={styles.activeIndicator} />}
     </View>
   );
 }
@@ -33,9 +31,9 @@ export default function TabLayout() {
           backgroundColor: Theme.colors.surface,
           borderTopColor: 'transparent',
           borderTopWidth: 0,
-          paddingBottom: Platform.OS === 'ios' ? 20 : 8,
-          paddingTop: 12,
-          height: Platform.OS === 'ios' ? 88 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 0,
+          paddingTop: 6,
+          height: Platform.OS === 'ios' ? 80 : 80,
           ...Platform.select({
             web: {
               boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.08)',
@@ -50,13 +48,16 @@ export default function TabLayout() {
           }),
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '700',
-          marginTop: 6,
-          letterSpacing: 0.3,
+          fontSize: 10,
+          fontWeight: '600',
+          marginTop: 2,
+          marginBottom: 0,
+          letterSpacing: 0.2,
         },
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
         },
       }}>
       <Tabs.Screen 
@@ -111,20 +112,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     paddingVertical: 4,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     borderRadius: 12,
-    minWidth: 48,
+    minWidth: 44,
+    minHeight: 40,
   },
   iconContainerActive: {
     backgroundColor: `${Theme.colors.primary}15`, // 15 is 8% opacity in hex
-    transform: [{ scale: 1.05 }],
-  },
-  activeIndicator: {
-    position: 'absolute',
-    bottom: -2,
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: Theme.colors.primary,
   },
 });
