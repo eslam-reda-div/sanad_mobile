@@ -1,6 +1,4 @@
 import LoadingSpinner from '@/components/LoadingSpinner';
-import Button from '@/components/ui/Button';
-import Card from '@/components/ui/Card';
 import { Theme } from '@/constants/Theme';
 import { helperCallsApi } from '@/src/api/services';
 import type { HelperCall } from '@/src/api/types';
@@ -80,11 +78,11 @@ export default function HelpersCallsScreen() {
 
   const getStatusColor = (status: string) => {
     switch (status?.toLowerCase()) {
-      case 'answered': return Theme.colors.secondary;
-      case 'no-answer': return Theme.colors.accent;
-      case 'busy': return Theme.colors.danger;
-      case 'failed': return Theme.colors.danger;
-      default: return Theme.colors.text.secondary;
+      case 'answered': case 'completed': return '#10B981'; // Green - same as 'completed'
+      case 'no-answer': return '#F59E0B'; // Orange - same as 'in-progress'
+      case 'busy': return '#EF4444'; // Red - same as 'failed'
+      case 'failed': return '#EF4444'; // Red - same as 'failed'
+      default: return '#6B7280'; // Gray
     }
   };
 
@@ -96,6 +94,34 @@ export default function HelpersCallsScreen() {
       case 'failed': return 'times-circle';
       default: return 'phone';
     }
+  };
+
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
+
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDuration = (duration: number | null) => {
+    if (!duration) return 'N/A';
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    return `${minutes}m ${seconds}s`;
   };
 
   const getPriorityColor = (priority: number) => {
@@ -128,64 +154,105 @@ export default function HelpersCallsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (
-          <Card variant="elevated" style={styles.callCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.helperIconContainer}>
-                {item.helper?.avatar_url ? (
-                  <Image source={{ uri: item.helper.avatar_url }} style={styles.helperAvatar} />
-                ) : (
-                  <FontAwesome name="user-circle" size={40} color={Theme.colors.primary} />
-                )}
-              </View>
-              <View style={styles.cardInfo}>
-                <Text style={styles.helperName}>{item.helper?.name || 'Helper'}</Text>
-                <View style={styles.helperIdRow}>
-                  <FontAwesome name="phone" size={12} color={Theme.colors.text.secondary} />
-                  <Text style={styles.helperId}>{item.helper?.phone_number || 'N/A'}</Text>
+          <View style={styles.callCard}>
+            <LinearGradient
+              colors={['#FFFFFF', '#F8FAFC']}
+              style={styles.callCardGradient}
+            >
+              {/* Status Indicator Strip */}
+              {/* <View style={[styles.statusStrip, { backgroundColor: getStatusColor(item.status || 'pending') }]} /> */}
+              
+              <View style={styles.callCardContent}>
+                {/* Header with Helper Image and Status */}
+                <View style={styles.callHeader}>
+                  <View style={styles.callHeaderLeft}>
+                    <View style={styles.helperImageContainer}>
+                      {item.helper?.avatar_url ? (
+                        <Image 
+                          source={{ uri: item.helper.avatar_url }} 
+                          style={styles.helperImage}
+                        />
+                      ) : (
+                        <LinearGradient
+                          colors={['#8B5CF6', '#A855F7']}
+                          style={styles.helperImageGradient}
+                        >
+                          <FontAwesome name="user" size={28} color="#fff" />
+                        </LinearGradient>
+                      )}
+                    </View>
+                    <View style={styles.callTitleContainer}>
+                      <Text style={styles.callTitle}>{item.helper?.name || 'Helper'}</Text>
+                      <Text style={styles.callSubtitle}>
+                        {formatDate(item.initiated_at || null)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status || 'pending') }]}>
+                    <FontAwesome name={getStatusIcon(item.status || 'pending')} size={10} color="#fff" />
+                    <Text style={styles.statusText}>{item.status || 'pending'}</Text>
+                  </View>
+                </View>
+
+                {/* Details Grid */}
+                <View style={styles.detailsGrid}>
+                  <View style={styles.detailBox}>
+                    <View style={styles.detailIconContainer}>
+                      <FontAwesome name="clock-o" size={16} color="#F59E0B" />
+                    </View>
+                    <Text style={styles.detailLabel}>Time</Text>
+                    <Text style={styles.detailValue}>{formatTime(item.initiated_at || null)}</Text>
+                  </View>
+                  
+                  <View style={styles.detailBox}>
+                    <View style={styles.detailIconContainer}>
+                      <FontAwesome name="hourglass-half" size={16} color="#8B5CF6" />
+                    </View>
+                    <Text style={styles.detailLabel}>Duration</Text>
+                    <Text style={styles.detailValue}>{formatDuration(item.duration_seconds || null)}</Text>
+                  </View>
+                  
+                  <View style={styles.detailBox}>
+                    <View style={[styles.detailIconContainer, { backgroundColor: getPriorityColor(item.helper?.pivot?.priority || 3) }]}>
+                      <FontAwesome name="flag" size={16} color="#fff" />
+                    </View>
+                    <Text style={styles.detailLabel}>Priority</Text>
+                    <Text style={styles.detailValue}>{item.helper?.pivot?.priority || 3}</Text>
+                  </View>
+                </View>
+
+                {/* Action Buttons */}
+                <View style={styles.cardActions}>
+                  <TouchableOpacity 
+                    style={styles.viewButton}
+                    onPress={() => router.push(`/helper-call-detail?id=${item.id}`)}
+                  >
+                    <LinearGradient
+                      colors={['#8B5CF6', '#A855F7']}
+                      style={styles.viewButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.viewButtonText}>View Details</Text>
+                      <FontAwesome name="chevron-right" size={14} color="#fff" />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.deleteButton}
+                    onPress={() => handleDelete(item.id)}
+                  >
+                    <LinearGradient
+                      colors={['#FEE2E2', '#FECACA']}
+                      style={styles.deleteButtonGradient}
+                    >
+                      <FontAwesome name="trash" size={18} color="#EF4444" />
+                    </LinearGradient>
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={[styles.priorityBadge, { backgroundColor: getPriorityColor(item.helper?.pivot?.priority || 3) }]}>
-                <Text style={styles.priorityText}>{item.helper?.pivot?.priority || 3}</Text>
-              </View>
-            </View>
-            
-            <View style={styles.statusRow}>
-              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status || 'pending') }]}>
-                <FontAwesome name={getStatusIcon(item.status || 'pending')} size={12} color="#fff" />
-                <Text style={styles.statusText}>{item.status || 'pending'}</Text>
-              </View>
-            </View>
-
-            <View style={styles.callMetadata}>
-              <View style={styles.metadataItem}>
-                <FontAwesome name="clock-o" size={14} color={Theme.colors.text.secondary} />
-                <Text style={styles.metadataText}>Initiated: {item.initiated_at ? new Date(item.initiated_at).toLocaleString() : 'N/A'}</Text>
-              </View>
-              {item.duration_seconds && (
-                <View style={styles.metadataItem}>
-                  <FontAwesome name="hourglass-half" size={14} color={Theme.colors.text.secondary} />
-                  <Text style={styles.metadataText}>Duration: {Math.floor(item.duration_seconds / 60)}m {item.duration_seconds % 60}s</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.cardActions}>
-              <TouchableOpacity 
-                style={styles.viewButton}
-                onPress={() => router.push(`/helper-call-detail?id=${item.id}`)}
-              >
-                <Text style={styles.viewDetailsText}>View Details</Text>
-                <FontAwesome name="chevron-right" size={14} color={Theme.colors.primary} />
-              </TouchableOpacity>
-              <Button
-                title="Delete"
-                onPress={() => handleDelete(item.id)}
-                variant="danger"
-                size="small"
-                icon={<FontAwesome name="trash" size={16} color="#fff" />}
-              />
-            </View>
-          </Card>
+            </LinearGradient>
+          </View>
         )}
         ListEmptyComponent={
           <View style={styles.emptyState}>
@@ -207,27 +274,170 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 16, color: 'rgba(255,255,255,0.9)' },
   iconContainer: { width: 56, height: 56, borderRadius: 9999, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   listContent: { padding: 24, paddingBottom: 120 },
-  callCard: { marginBottom: 16 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  helperIconContainer: { marginRight: 12, width: 40, height: 40, borderRadius: 20, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  helperAvatar: { width: 40, height: 40, borderRadius: 20 },
-  cardInfo: { flex: 1 },
-  helperName: { fontSize: 18, fontWeight: '700', color: Theme.colors.text.primary, marginBottom: 4 },
-  helperIdRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  helperId: { fontSize: 12, color: Theme.colors.text.secondary },
-  priorityBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 9999, minWidth: 36, alignItems: 'center', justifyContent: 'center' },
-  priorityText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  statusRow: { marginBottom: 12 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, alignSelf: 'flex-start' },
-  statusText: { fontSize: 14, fontWeight: '600', color: '#fff' },
-  callMetadata: { marginBottom: 12 },
-  metadataItem: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  metadataText: { fontSize: 12, color: Theme.colors.text.secondary },
-  metadataValue: { fontSize: 14, color: Theme.colors.text.primary, fontWeight: '500' },
-  cardActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  viewButton: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  viewDetailsRow: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start' },
-  viewDetailsText: { fontSize: 14, fontWeight: '600', color: Theme.colors.primary },
+  callCard: {
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  callCardGradient: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 232, 240, 0.8)',
+  },
+  statusStrip: {
+    width: '100%',
+    height: 4,
+  },
+  callCardContent: {
+    padding: 20,
+  },
+  callHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 20,
+  },
+  callHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  helperImageContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  helperImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+  },
+  helperImageGradient: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  callTitleContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  callTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Theme.colors.text.primary,
+  },
+  callSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: Theme.colors.text.secondary,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    textTransform: 'capitalize',
+  },
+  detailsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  detailBox: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  detailIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  detailLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: Theme.colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Theme.colors.text.primary,
+    textAlign: 'center',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  viewButton: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  viewButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+  },
+  viewButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  deleteButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  deleteButtonGradient: {
+    width: 52,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingVertical: 64 },
   emptyText: { fontSize: 20, fontWeight: '600', color: Theme.colors.text.primary, marginTop: 16 },
   emptySubtext: { fontSize: 14, color: Theme.colors.text.secondary, marginTop: 8, textAlign: 'center' },

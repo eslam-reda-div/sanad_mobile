@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 20, fontWeight: '600', color: Theme.colors.text.primary, marginTop: 16 },
   emptySubtext: { fontSize: 14, color: Theme.colors.text.secondary, marginTop: 8, textAlign: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: Theme.colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' },
+  modalContent: { backgroundColor: Theme.colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '90%' , paddingBottom: 50},
   modalHeader: { paddingVertical: 24, paddingHorizontal: 24, borderTopLeftRadius: 24, borderTopRightRadius: 24 },
   modalTitle: { fontSize: 24, fontWeight: '700', color: '#fff', textAlign: 'center' },
   modalBody: { padding: 24 },

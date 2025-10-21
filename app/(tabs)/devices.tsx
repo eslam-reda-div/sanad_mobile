@@ -76,7 +76,8 @@ export default function DevicesScreen() {
 
   const handleQRScanned = async (data: string) => {
     try {
-      const response = await devicesApi.addDevice({ uuid: data });
+      const jsonObject = JSON.parse(data);
+      const response = await devicesApi.addDevice({ uuid: jsonObject.uuid });
       if (response.success) {
         Alert.alert('Success', 'Device added successfully');
         setQrVisible(false);

@@ -11,13 +11,13 @@ import { useColorScheme } from '@/components/useColorScheme';
 import { useAuthStore } from '@/src/store/authStore';
 
 export {
-    // Catch any errors thrown by the Layout component.
-    ErrorBoundary
+  // Catch any errors thrown by the Layout component.
+  ErrorBoundary
 } from 'expo-router';
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)/home',
+  initialRouteName: 'index',
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -59,11 +59,16 @@ function RootLayoutNav() {
 
   useEffect(() => {
     if (loading) return;
+    
     const inAuth = segments[0] === 'auth';
-    if (!token && !inAuth) {
-      router.replace('/auth/login');
-    } else if (token && inAuth) {
+    
+    // Only redirect if user is in auth pages but has token
+    if (token && inAuth) {
       router.replace('/(tabs)/home');
+    }
+    // Only redirect if user is not in auth pages and has no token
+    else if (!token && !inAuth && segments[0] !== undefined) {
+      router.replace('/auth/login');
     }
   }, [token, loading, segments]);
 
@@ -71,10 +76,14 @@ function RootLayoutNav() {
     <SafeAreaProvider>
       <View style={{ flex: 1 }}>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack>
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="call-detail" options={{ headerShown: false }} />
+            <Stack.Screen name="helper-call-detail" options={{ headerShown: false }} />
+            <Stack.Screen name="+not-found" />
           </Stack>
         </ThemeProvider>
       </View>

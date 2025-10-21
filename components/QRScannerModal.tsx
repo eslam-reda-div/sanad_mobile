@@ -4,6 +4,7 @@ import { Theme } from '@/constants/Theme';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import React, { useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   visible: boolean;
@@ -15,6 +16,7 @@ export default function QRScannerModal({ visible, onClose, onSuccess }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [manualValue, setManualValue] = useState('');
+  const insets = useSafeAreaInsets();
 
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
@@ -103,7 +105,7 @@ export default function QRScannerModal({ visible, onClose, onSuccess }: Props) {
   return (
     <Modal visible={visible} animationType="slide">
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, Platform.OS === 'ios' ? 60 : 40) }]}>
           <Text style={styles.title}>Scan Device QR Code</Text>
           <Text style={styles.subtitle}>
             {scanned ? 'QR Code Detected!' : 'Align the QR code within the frame'}
@@ -130,8 +132,8 @@ export default function QRScannerModal({ visible, onClose, onSuccess }: Props) {
           </View>
         </View>
 
-        <View style={styles.footer}>
-          {scanned ? (
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, Platform.OS === 'ios' ? 40 : 24) }]}>
+          {/* {scanned ? (
             <Button 
               title="Tap to Scan Again" 
               onPress={() => setScanned(false)} 
@@ -154,7 +156,7 @@ export default function QRScannerModal({ visible, onClose, onSuccess }: Props) {
                 disabled={!manualValue.trim()}
               />
             </View>
-          )}
+          )} */}
           <Button title="Close" onPress={onClose} variant="outline" fullWidth />
         </View>
       </View>
@@ -168,7 +170,6 @@ const styles = StyleSheet.create({
     backgroundColor: Theme.colors.background,
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 24,
     paddingBottom: 24,
     backgroundColor: Theme.colors.surface,
@@ -227,7 +228,6 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 12,
     backgroundColor: Theme.colors.surface,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.1,

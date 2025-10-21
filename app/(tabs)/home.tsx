@@ -178,7 +178,10 @@ export default function HomeScreen() {
         <TouchableOpacity style={styles.actionCardFull} onPress={() => setQrVisible(true)}>
           <LinearGradient colors={['#6366F1', '#8B5CF6']} style={styles.actionGradientFull}>
             <FontAwesome name="qrcode" size={36} color="#fff" />
-            <Text style={styles.actionTextFull}>Scan Device QR Code</Text>
+            <View style={{ alignItems: 'center' }}>
+              <Text style={styles.actionTextFull}>Scan Device QR Code</Text>
+              <Text style={[styles.actionTextFull, { fontSize: 14, fontWeight: '400', opacity: 0.9 }]}>Edit device settings quickly</Text>
+            </View>
           </LinearGradient>
         </TouchableOpacity>
         
