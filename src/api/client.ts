@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'https://sanad-app.tech';
+const API_BASE = 'https://sanad-laravel-addtbuh4dpd6bffy.switzerlandnorth-01.azurewebsites.net';
 
 export const api = axios.create({
   baseURL: API_BASE,
