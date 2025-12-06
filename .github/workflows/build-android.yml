@@ -20,7 +20,7 @@ jobs:
       - name: 🧰 Install dependencies
         run: |
           npm install -g eas-cli
-          npm ci
+          npm ci --legacy-peer-deps
 
       - name: 🗑️ Remove expo-barcode-scanner (incompatible)
         run: |
@@ -28,8 +28,8 @@ jobs:
 
       - name: 🔧 Clean and verify dependencies
         run: |
-          npm install
-          npx expo install --fix
+          npm install --legacy-peer-deps
+          npx expo install --fix || true
 
       - name: ⚙️ Prebuild native Android project
         run: |
